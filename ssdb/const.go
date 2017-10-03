@@ -1,0 +1,65 @@
+package ssdb
+
+
+const (
+	SALVESTATUS_DISCONNECTED = 0
+	SALVESTATUS_INIT = 1
+	SALVESTATUS_COPY = 2
+	SALVESTATUS_SYNC = 4
+	SALVESTATUS_OUT_OF_SYNC = 8
+
+
+	DATATYPE_SYNCLOG    = 1
+	DATATYPE_KV         = 'k'
+	DATATYPE_HASH       = 'h'
+	DATATYPE_HSIZE      = 'H'
+	DATATYPE_ZSET       = 's' // key => score
+	DATATYPE_ZSCORE     = 'z' // key|score => ""
+	DATATYPE_ZSIZE      = 'Z'
+	DATATYPE_QUEUE      = 'q'
+	DATATYPE_QSIZE      = 'Q'
+	DATATYPE_MIN_PREFIX = DATATYPE_HASH
+	DATATYPE_MAX_PREFIX = DATATYPE_ZSET
+
+	BINLOGTYPE_NOOP     = 0
+	BINLOGTYPE_SYNC     = 1
+	BINLOGTYPE_MIRROR   = 2
+	BINLOGTYPE_COPY     = 3
+	BINLOGTYPE_CTRL     = 4
+
+	BINLOGCOMMAND_NONE = 0
+	BINLOGCOMMAND_KSET = 1
+	BINLOGCOMMAND_KDEL = 2
+	BINLOGCOMMAND_HSET = 3
+	BINLOGCOMMAND_HDEL = 4
+	BINLOGCOMMAND_ZSET = 5
+	BINLOGCOMMAND_ZDEL = 6
+
+	BINLOGCOMMAND_QPUSH_BACK  = 10
+	BINLOGCOMMAND_QPUSH_FRONT = 11
+	BINLOGCOMMAND_QPOP_BACK   = 12
+	BINLOGCOMMAND_QPOP_FRONT  = 13
+	BINLOGCOMMAND_QSET        = 14
+
+	BINLOGCOMMAND_BEGIN = 7
+	BINLOGCOMMAND_END   = 8
+
+	SSDB_EXPIRATION_LIST_KEY = "\xff\xff\xff\xff\xff|EXPIRE_LIST|KV"
+)
+
+var (
+	DATATYPE = map[byte]string{
+		byte('k'): "set",
+		byte('h'): "hset",
+		byte('s'): "zadd",
+	}
+
+	DATATRUECOMMAND = map[byte]string{
+		byte(1): "set",
+		byte(2): "del",
+		byte(3): "hset",
+		byte(4): "hdel",
+		byte(5): "zset",
+		byte(6): "zdel",
+	}
+)
