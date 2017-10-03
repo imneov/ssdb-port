@@ -56,7 +56,7 @@ Options:
 	-n N, --ncpu=N                    Set runtime.GOMAXPROCS to N.
 	-p M, --parallel=M                Set the number of parallel routines to M.
 	-f MASTER, --from=MASTER          Set host:port of master .
-	-t TARGET, --target=TARGET        Set host:port of slave .
+	-t TARGET, --target=TARGET        Set host:port of target .
 	-F MASTERPASSWORD, --frompassword	Set password of master .
 	-T SLAVEPASSWORD, --targetpassword	Set password of target .
 `
@@ -92,7 +92,7 @@ Options:
 	args.from, _ = d["--from"].(string)
 
 	args.fromAuth, _ = d["--frompassword"].(string)
-	args.fromAuth, _ = d["--targetpassword"].(string)
+	args.targetAuth, _ = d["--targetpassword"].(string)
 
 	log.Infof("set ncpu = %d, parallel = %d\n", ncpu, args.parallel)
 

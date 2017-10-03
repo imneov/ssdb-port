@@ -216,6 +216,14 @@ func (s *SSDBSalve) connectToMaster() (err error) {
 	s.status = SALVESTATUS_INIT
 	s.connectRetry = 0
 
+	if s.auth != "" {
+		//开始同步命令
+		if err = s.c.Send("auth", s.auth); err != nil{
+			log.Error("Auth error(%v)", err)
+			return
+		}
+	}
+
 	//开始同步命令
 	if err = s.c.Send("sync140","0","","sync"); err != nil{
 		log.Error("Send sync error(%v)", err)

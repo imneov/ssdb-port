@@ -37,13 +37,15 @@ func (cmd *cmdSync) Main() {
 	cmdsQueue := make(chan []string, 1000)
 
 	pool = newPool(target, targetAuth)
-	go func(){
-		for{
-			cmd := <- cmdsQueue
-			//log.Info("cmd: (%v)", cmd)
-			sendCmd(pool, cmd)
-		}
-	}()
+	for i:=0;i< args.parallel;i++ {
+		go func(){
+			for{
+				cmd := <- cmdsQueue
+				//log.Info("cmd: (%v)", cmd)
+				sendCmd(pool, cmd)
+			}
+		}()
+	}
 
 	if server, err := ssdb.NewSSDBSalve(from, fromAuth, &cmdsQueue); err == nil {
 		server.Start()
@@ -58,18 +60,22 @@ func (cmd *cmdSync) Main() {
 //初始化一个pool
 func newPool(target, password string) *redis.Pool {
 	return &redis.Pool{
-		MaxIdle:     3,
-		MaxActive:   5,
+		MaxIdle:     4,
+		MaxActive:   1024,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", target)
 			if err != nil {
 				return nil, err
 			}
-			if _, err := c.Do("AUTH", password); err != nil {
+
+			ss, err := c.Do("AUTH", password)
+			if  err != nil {
 				c.Close()
 				return nil, err
 			}
+			fmt.Println(ss)
+
 			return c, err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
