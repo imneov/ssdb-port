@@ -1,0 +1,8 @@
+*.rdb
+*.swp
+*.log
+*.tmp
+*.out
+/bin/*
+.idea/
+*.iml
