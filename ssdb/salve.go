@@ -149,19 +149,19 @@ func (s *SSDBSalve) handleRecv(binlog *Binlog) (err error) {
 
 
 func (s *SSDBSalve) handleNoopRecv(binlog *Binlog) (err error) {
-	//log.Info("handleNoopRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+	//log.Info("handleNoopRecv:(%v)", binlog)
 	return nil
 }
 
 func (s *SSDBSalve) handleCopyRecv(binlog *Binlog) (err error) {
-	//log.Info("handleCopyRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+	//log.Info("handleCopyRecv:(%v)", binlog)
 	if binlog.cmdtype == BINLOGCOMMAND_BEGIN{
-		log.Info("start handleCopyRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+		log.Info("start handleCopyRecv:(%v)", binlog)
 		s.status = SALVESTATUS_COPY
 		return
 	}
 	if binlog.cmdtype == BINLOGCOMMAND_END{
-		log.Info("start handleCopyRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+		log.Info("start handleCopyRecv:(%v)", binlog)
 		s.status = SALVESTATUS_SYNC
 		return
 	}
@@ -170,10 +170,10 @@ func (s *SSDBSalve) handleCopyRecv(binlog *Binlog) (err error) {
 }
 
 func (s *SSDBSalve) handleSyncRecv(binlog *Binlog) (err error) {
-	//log.Info("handleSyncRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+	//log.Info("handleSyncRecv:(%v)", binlog)
 
 	if s.status == SALVESTATUS_COPY{
-		log.Info("start handleSyncRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+		log.Info("start handleSyncRecv:(%v)", binlog)
 		s.status = SALVESTATUS_SYNC
 	}
 	s.handleRecvCmd(binlog)
@@ -181,18 +181,18 @@ func (s *SSDBSalve) handleSyncRecv(binlog *Binlog) (err error) {
 }
 
 func (s *SSDBSalve) handleCtrlRecv(binlog *Binlog) (err error) {
-	log.Info("handleCtrlRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+	log.Info("handleCtrlRecv:(%v)", binlog)
 	return nil
 }
 
 func (s *SSDBSalve) handleMirrorRecv(binlog *Binlog) (err error) {
-	log.Info("handleMirrorRecv:(%v)(%v)", binlog, string(binlog.body[1]))
+	log.Info("handleMirrorRecv:(%v)", binlog)
 	return nil
 }
 
 func (s *SSDBSalve) handleRecvCmd(binlog *Binlog) (err error) {
 	//log.Info("handleRecvCmd: (%v)(%v)", binlog.cmd, binlog)
-	*s.cmdsQueue <- binlog.cmd
+	//*s.cmdsQueue <- binlog.cmd
 	return nil
 }
 
