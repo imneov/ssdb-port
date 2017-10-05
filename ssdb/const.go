@@ -47,7 +47,16 @@ const (
 	SSDB_EXPIRATION_LIST_KEY = "\xff\xff\xff\xff\xff|EXPIRE_LIST|KV"
 )
 
+
 var (
+	STATUS = map[uint32]string{
+		0: "DISCONNECTED",
+		1: "INIT",
+		2: "COPY",
+		4: "SYNC",
+		8: "OUT_OF_SYNC",
+	}
+
 	DATATYPE = map[byte]string{
 		byte('k'): "set",
 		byte('h'): "hset",

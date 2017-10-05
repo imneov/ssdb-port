@@ -8,7 +8,6 @@ import (
 var (
 	count           int32
 	lastBinlogType  string
-	datetypeMetrics map[string]int32
 	binlogCmdMetrics map[string]int32
 )
 
@@ -37,16 +36,6 @@ func NewSSDBSalve(from string, fromAuth string, cmdsQueue *chan []string) (*SSDB
 func (s *SSDBSalve) Start() (err error) {
 
 	s.status = SALVESTATUS_DISCONNECTED;
-	datetypeMetrics = make(map[string]int32, 1000)
-	datetypeMetrics[string(DATATYPE_SYNCLOG)] = 0
-	datetypeMetrics[string(DATATYPE_KV)] = 0
-	datetypeMetrics[string(DATATYPE_HASH)] = 0
-	datetypeMetrics[string(DATATYPE_HSIZE)] = 0
-	datetypeMetrics[string(DATATYPE_ZSET)] = 0
-	datetypeMetrics[string(DATATYPE_ZSCORE)] = 0
-	datetypeMetrics[string(DATATYPE_ZSIZE)] = 0
-	datetypeMetrics[string(DATATYPE_QUEUE)] = 0
-	datetypeMetrics[string(DATATYPE_QSIZE)] = 0
 
 	binlogCmdMetrics = make(map[string]int32, 1000)
 	binlogCmdMetrics[string(BINLOGCOMMAND_NONE)] = 0
@@ -94,40 +83,12 @@ func (s *SSDBSalve) Start() (err error) {
 
 
 func (s *SSDBSalve) handleRecv(binlog *Binlog) (err error) {
-	if len(binlog.body[0]) > 0{
-		datetypeMetrics[string(binlog.body[0][:1])]++
-	}
+
 	binlogCmdMetrics[string(binlog.cmdtype)]++
 	count++
 	if count % 500000 == 1 {
-		log.Info("count is %d %d", s.status, count)
-		log.Info("cmd: %v", binlog.cmd)
-		log.Info("datetypeMetrics[%d %d %d %d %d %d %d %d %d]",
-			datetypeMetrics[string(DATATYPE_SYNCLOG)],
-			datetypeMetrics[string(DATATYPE_KV)],
-			datetypeMetrics[string(DATATYPE_HASH)],
-			datetypeMetrics[string(DATATYPE_HSIZE)],
-			datetypeMetrics[string(DATATYPE_ZSET)],
-			datetypeMetrics[string(DATATYPE_ZSCORE)],
-			datetypeMetrics[string(DATATYPE_ZSIZE)],
-			datetypeMetrics[string(DATATYPE_QUEUE)],
-			datetypeMetrics[string(DATATYPE_QSIZE)])
-
-		log.Info("binlogCmdMetrics[%d %d %d %d %d %d %d %d %d %d %d %d %d %d]",
-			binlogCmdMetrics[string(BINLOGCOMMAND_NONE)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_KSET)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_KDEL)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_HSET)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_HDEL)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_ZSET)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_ZDEL)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_QPUSH_BACK)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_QPUSH_FRONT)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_QPOP_BACK)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_QPOP_FRONT)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_QSET)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_BEGIN)],
-			binlogCmdMetrics[string(BINLOGCOMMAND_END)])
+		s.dumpStatus()
+		log.Info("[%s] cmd: %v", STATUS[s.status], binlog.cmd)
 	}
 
 	switch binlog.datatype {
@@ -148,6 +109,28 @@ func (s *SSDBSalve) handleRecv(binlog *Binlog) (err error) {
 }
 
 
+func (s *SSDBSalve) dumpStatus() (err error) {
+	log.Info("[%s] count is %d", STATUS[s.status], count)
+	log.Info("binlogCmdMetrics[none:%d begin:%d end:%d ks:%d kd:%d hs:%d hd:%d zs:%d zd:%d qpushb:%d qpushf:%d qpb:%d qpf:%d qset:%d]",
+		binlogCmdMetrics[string(BINLOGCOMMAND_NONE)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_BEGIN)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_END)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_KSET)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_KDEL)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_HSET)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_HDEL)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_ZSET)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_ZDEL)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_QPUSH_BACK)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_QPUSH_FRONT)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_QPOP_BACK)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_QPOP_FRONT)],
+		binlogCmdMetrics[string(BINLOGCOMMAND_QSET)],
+	)
+	return nil
+}
+
+
 func (s *SSDBSalve) handleNoopRecv(binlog *Binlog) (err error) {
 	//log.Info("handleNoopRecv:(%v)", binlog)
 	return nil
@@ -156,12 +139,12 @@ func (s *SSDBSalve) handleNoopRecv(binlog *Binlog) (err error) {
 func (s *SSDBSalve) handleCopyRecv(binlog *Binlog) (err error) {
 	//log.Info("handleCopyRecv:(%v)", binlog)
 	if binlog.cmdtype == BINLOGCOMMAND_BEGIN{
-		log.Info("start handleCopyRecv:(%v)", binlog)
+		log.Info("Start Copy,Recv:(%v)", binlog)
 		s.status = SALVESTATUS_COPY
 		return
 	}
 	if binlog.cmdtype == BINLOGCOMMAND_END{
-		log.Info("start handleCopyRecv:(%v)", binlog)
+		log.Info("Stop  Copy,Recv:(%v)", binlog)
 		s.status = SALVESTATUS_SYNC
 		return
 	}
@@ -171,11 +154,6 @@ func (s *SSDBSalve) handleCopyRecv(binlog *Binlog) (err error) {
 
 func (s *SSDBSalve) handleSyncRecv(binlog *Binlog) (err error) {
 	//log.Info("handleSyncRecv:(%v)", binlog)
-
-	if s.status == SALVESTATUS_COPY{
-		log.Info("start handleSyncRecv:(%v)", binlog)
-		s.status = SALVESTATUS_SYNC
-	}
 	s.handleRecvCmd(binlog)
 	return nil
 }
@@ -192,7 +170,7 @@ func (s *SSDBSalve) handleMirrorRecv(binlog *Binlog) (err error) {
 
 func (s *SSDBSalve) handleRecvCmd(binlog *Binlog) (err error) {
 	//log.Info("handleRecvCmd: (%v)(%v)", binlog.cmd, binlog)
-	//*s.cmdsQueue <- binlog.cmd
+	*s.cmdsQueue <- binlog.cmd
 	return nil
 }
 
