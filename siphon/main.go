@@ -7,9 +7,10 @@ import (
 	"runtime"
 	"strconv"
 	"github.com/docopt/docopt-go"
-	"github.com/reborndb/go/bytesize"
 	"github.com/reborndb/go/errors"
 	"github.com/reborndb/go/log"
+	"fmt"
+	"encoding/binary"
 )
 
 
@@ -22,10 +23,6 @@ var  args struct {
 	fromAuth string
 	targetAuth string
 }
-const (
-	ReaderBufferSize = bytesize.MB * 32
-	WriterBufferSize = bytesize.MB * 8
-)
 
 func  parseIntFromString(s string, min, max int) (int, error) {
 	n, err := strconv.Atoi(s)
@@ -38,14 +35,6 @@ func  parseIntFromString(s string, min, max int) (int, error) {
 	return 0, errors.Errorf("out of range [%d,%d], got %d", min, max, n)
 }
 
-const (
-	MinDB = 0
-	MaxDB = 1023
-)
-
-var acceptDB = func(db uint32) bool {
-	return db >= MinDB && db <= MaxDB
-}
 
 func main() {
 	usage := `
@@ -60,6 +49,13 @@ Options:
 	-F MASTERPASSWORD, --frompassword	Set password of master .
 	-T SLAVEPASSWORD, --targetpassword	Set password of target .
 `
+
+	i :=  int64(-3)
+
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(i))
+	fmt.Println(b)
+
 	d, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
 		log.PanicError(err, "parse arguments failed")

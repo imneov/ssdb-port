@@ -92,6 +92,9 @@ func newPool(target, password string) *redis.Pool {
 
 func sendCmd(pool *redis.Pool, cmd []string) (err error){
 
+	if len(cmd) < 1 {
+		return nil
+	}
 	conn := pool.Get()
 	defer conn.Close()
 	//redis操作
