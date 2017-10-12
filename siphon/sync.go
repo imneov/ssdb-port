@@ -64,7 +64,11 @@ func newPool(target, password string) *redis.Pool {
 		MaxActive:   1024,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", target)
+			c, err := redis.Dial("tcp", target,
+				redis.DialConnectTimeout(5 * time.Second),
+				redis.DialReadTimeout(5 * time.Second),
+				redis.DialWriteTimeout(5 * time.Second),
+			)
 			if err != nil {
 				return nil, err
 			}
