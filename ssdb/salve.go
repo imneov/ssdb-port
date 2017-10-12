@@ -19,14 +19,16 @@ type SSDBSalve struct {
 	status uint32
 	connectRetry uint32
 	cmdsQueue *chan []string
+	listcmdsQueue *chan []string
 }
 
 
-func NewSSDBSalve(from string, fromAuth string, cmdsQueue *chan []string) (*SSDBSalve, error) {
+func NewSSDBSalve(from string, fromAuth string, cmdsQueue *chan []string, listcmdsQueue *chan []string) (*SSDBSalve, error) {
 	server := &SSDBSalve{id: fmt.Sprintf("id-%s-%d", from, time.Now().Unix()),
 		from: from,
 		auth: fromAuth,
 		cmdsQueue: cmdsQueue,
+		listcmdsQueue: listcmdsQueue,
 	}
 	return server, nil
 
@@ -76,6 +78,7 @@ func (s *SSDBSalve) Start() (err error) {
 				s.handleRecv(resp)
 				continue
 			}
+			fmt.Println("sync error", err)
 			return err
 		}
 	}
@@ -103,7 +106,7 @@ func (s *SSDBSalve) handleRecv(binlog *Binlog) (err error) {
 	case BINLOGTYPE_MIRROR:
 		s.handleMirrorRecv(binlog)
 	default:
-		log.Error("count is %d %d", s.status, count)
+		log.Error("[%s] unknown datatype (%v)", STATUS[s.status], binlog)
 	}
 	return
 }
@@ -139,12 +142,12 @@ func (s *SSDBSalve) handleNoopRecv(binlog *Binlog) (err error) {
 func (s *SSDBSalve) handleCopyRecv(binlog *Binlog) (err error) {
 	//log.Info("handleCopyRecv:(%v)", binlog)
 	if binlog.cmdtype == BINLOGCOMMAND_BEGIN{
-		log.Info("Start Copy,Recv:(%v)", binlog)
+		log.Info("Copy Start,Recv:(%v)", binlog)
 		s.status = SALVESTATUS_COPY
 		return
 	}
 	if binlog.cmdtype == BINLOGCOMMAND_END{
-		log.Info("Stop  Copy,Recv:(%v)", binlog)
+		log.Info("Copy Stop,Recv:(%v)", binlog)
 		s.status = SALVESTATUS_SYNC
 		return
 	}
@@ -159,18 +162,27 @@ func (s *SSDBSalve) handleSyncRecv(binlog *Binlog) (err error) {
 }
 
 func (s *SSDBSalve) handleCtrlRecv(binlog *Binlog) (err error) {
-	log.Info("handleCtrlRecv:(%v)", binlog)
+	log.Info("[%s]handleCtrlRecv:(%v)", STATUS[s.status], binlog)
 	return nil
 }
 
 func (s *SSDBSalve) handleMirrorRecv(binlog *Binlog) (err error) {
-	log.Info("handleMirrorRecv:(%v)", binlog)
+	log.Info("[%s]handleMirrorRecv:(%v)", STATUS[s.status], binlog)
 	return nil
 }
 
 func (s *SSDBSalve) handleRecvCmd(binlog *Binlog) (err error) {
 	//log.Info("handleRecvCmd: (%v)(%v)", binlog.cmd, binlog)
-	*s.cmdsQueue <- binlog.cmd
+	if len(binlog.cmd) < 1 {
+		log.Info("[%s]handleRecvCmd: empty cmd in (%v)", STATUS[s.status], binlog.cmd, binlog)
+		return
+	}
+	switch binlog.cmdtype{
+	case BINLOGCOMMAND_QSET, BINLOGCOMMAND_QPUSH_BACK, BINLOGCOMMAND_QPUSH_FRONT, BINLOGCOMMAND_QPOP_BACK,BINLOGCOMMAND_QPOP_FRONT:
+		*s.listcmdsQueue <- binlog.cmd
+	default:
+		*s.cmdsQueue <- binlog.cmd
+	}
 	return nil
 }
 
@@ -207,7 +219,7 @@ func (s *SSDBSalve) connectToMaster() (err error) {
 		log.Error("Send sync error(%v)", err)
 		return
 	}
-	log.Info("[%s] ready to receive binlogs", s.id);
+	log.Info("[%s] ready to receive binlogs", s.id)
 
 	return
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/reborndb/go/log"
 	"fmt"
 	"encoding/binary"
+	"goim/libs/perf"
 )
 
 
@@ -39,13 +40,14 @@ func  parseIntFromString(s string, min, max int) (int, error) {
 func main() {
 	usage := `
 Usage:
-	siphon sync [--ncpu=N]  [--parallel=M]   --from=MASTER    --target=TARGET [--frompassword=MASTERPASSWORD] [--targetpassword=SLAVEPASSWORD]
+	siphon sync [--pprof=0.0.0.0:6060] [--ncpu=N]  [--parallel=M]   --from=MASTER    --target=TARGET [--frompassword=MASTERPASSWORD] [--targetpassword=SLAVEPASSWORD]
 
 Options:
-	-n N, --ncpu=N                    Set runtime.GOMAXPROCS to N.
-	-p M, --parallel=M                Set the number of parallel routines to M.
-	-f MASTER, --from=MASTER          Set host:port of master .
-	-t TARGET, --target=TARGET        Set host:port of target .
+	--pprof								Set pprof addr and port,like 0.0.0.0:6060 .
+	-n N, --ncpu=N                    	Set runtime.GOMAXPROCS to N .
+	-p M, --parallel=M                	Set the number of parallel routines to M .
+	-f MASTER, --from=MASTER          	Set host:port of master .
+	-t TARGET, --target=TARGET        	Set host:port of target .
 	-F MASTERPASSWORD, --frompassword	Set password of master .
 	-T SLAVEPASSWORD, --targetpassword	Set password of target .
 `
@@ -92,8 +94,18 @@ Options:
 
 	log.Infof("set ncpu = %d, parallel = %d\n", ncpu, args.parallel)
 
+
+
+	pprofAddr, _ := d["--pprof"].(string)
+	if pprofAddr != ""{
+		log.Infof("init pprof on  %s\n", pprofAddr)
+		perf.Init([]string{pprofAddr})
+	}
+
 	switch {
 	case d["sync"].(bool):
 		new(cmdSync).Main()
 	}
 }
+
+

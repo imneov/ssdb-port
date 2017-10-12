@@ -222,7 +222,15 @@ func (s *SSDBClient) Recv() (resp []string, err error) {
 		if packetSize == -1 {
 			packetSize = ToNum(buf[:(bufSize - drop)])
 		} else {
-			if s.packetBuf.Len()+bufSize == packetSize+drop {
+			//data endwith '\n' or '\r\n'
+			drop = 0
+			if s.packetBuf.Len()+bufSize == packetSize+1 { //
+				drop = 1
+			}
+			if s.packetBuf.Len()+bufSize == packetSize+2 {
+				drop = 2
+			}
+			if drop > 0 {
 				s.packetBuf.Write(buf[:bufSize-drop])
 				resp = append(resp, s.packetBuf.String())
 				s.packetBuf.Reset()
@@ -243,7 +251,6 @@ func (s *SSDBClient) RecvBinlog() (resp *Binlog, err error) {
 	s.packetBuf.Reset()
 	var body [][]byte
 	for {
-		//fmt.Printf("RecvBinlog\n")
 		buf, err := s.buf.ReadBytes('\n')
 		if err != nil {
 			return nil, err
@@ -254,6 +261,7 @@ func (s *SSDBClient) RecvBinlog() (resp *Binlog, err error) {
 			resp,err = LoadBinlog(body)
 			return resp, nil
 		}
+
 		if bufSize > 2 && buf[bufSize-2] == '\r' { // drop end
 			drop = 2	//end with \n\n
 		} else {
@@ -262,14 +270,22 @@ func (s *SSDBClient) RecvBinlog() (resp *Binlog, err error) {
 		if packetSize == -1 {
 			packetSize = ToNum(buf[:(bufSize - drop)])
 		} else {
-			if s.packetBuf.Len()+bufSize == packetSize+drop {
+			//data endwith '\n' or '\r\n'
+			drop = 0
+			if s.packetBuf.Len()+bufSize == packetSize+1 { //
+				drop = 1
+			}
+			if s.packetBuf.Len()+bufSize == packetSize+2 {
+				drop = 2
+			}
+			if drop > 0 {
 				s.packetBuf.Write(buf[:bufSize-drop])
 				packet := make([]byte, s.packetBuf.Len())
 				copy(packet, s.packetBuf.Bytes())
 				body = append(body, packet)
 				s.packetBuf.Reset()
 				packetSize = -1
-			} else {
+			}else {
 				s.packetBuf.Write(buf)
 			}
 		}
