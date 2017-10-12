@@ -35,19 +35,28 @@ func (cmd *cmdSync) Main() {
 	log.Infof("sync from '%s' to '%s'\n", from, target)
 
 	cmdsQueue := make(chan []string, 1000)
+	listcmdsQueue := make(chan []string, 1000)
 
 	pool = newPool(target, targetAuth)
 	for i:=0;i< args.parallel;i++ {
 		go func(){
 			for{
 				cmd := <- cmdsQueue
-				//log.Info("cmd: (%v)", cmd)
+				//log.Info("cmd: (%v)(%v)", cmd, len(cmdsQueue))
 				sendCmd(pool, cmd)
 			}
 		}()
 	}
 
-	if server, err := ssdb.NewSSDBSalve(from, fromAuth, &cmdsQueue); err == nil {
+	go func(){
+		for{
+			cmd := <- listcmdsQueue
+			//log.Info("list cmd: (%v)(%v)", cmd, len(listcmdsQueue))
+			sendCmd(pool, cmd)
+		}
+	}()
+
+	if server, err := ssdb.NewSSDBSalve(from, fromAuth, &cmdsQueue, &listcmdsQueue); err == nil {
 		server.Start()
 	}
 
@@ -85,7 +94,7 @@ func newPool(target, password string) *redis.Pool {
 			return c, err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Minute {
+			if time.Since(t) < 20 * time.Second {
 				return nil
 			}
 			_, err := c.Do("PING")
@@ -97,7 +106,8 @@ func newPool(target, password string) *redis.Pool {
 func sendCmd(pool *redis.Pool, cmd []string) (err error){
 
 	if len(cmd) < 1 {
-		return nil
+		log.Error("cmd is empty(%v)", cmd)
+		return
 	}
 	conn := pool.Get()
 	defer conn.Close()
@@ -107,9 +117,10 @@ func sendCmd(pool *redis.Pool, cmd []string) (err error){
 	for _, command := range cmd[1:] {
 		arguments = append(arguments, command)
 	}
-	_, err = conn.Do(commandName,arguments...)
+	reply, err := conn.Do(commandName,arguments...)
 	if err != nil {
-		fmt.Println(err)
+		log.Error("conn.Do(%v,%v) error(%v)", commandName, arguments, err)
+		fmt.Println(err, reply)
 		return err
 	}
 	return err

@@ -29,12 +29,12 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 	OFFSET += DATATYPE_SIZE
 	binlog.cmdtype = (uint8)(bytes[0][OFFSET])
 	OFFSET += CMD_SIZE
-	key := bytes[0][OFFSET:]
+	body := bytes[0][OFFSET:]
 	binlog.body = bytes
 
-	if len(key) > 1 {
+	if len(body) > 1 {
 		offset := 0
-		cmdtag := key[offset]
+		cmdtag := body[offset]
 		offset += 1 //first byte is cmd tag,second byte is split byte
 		switch binlog.cmdtype {
 		case BINLOGCOMMAND_KSET:
@@ -46,7 +46,7 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			}
 			binlog.cmd = []string{
 				"set",
-				string(key[offset:]),
+				string(body[offset:]),
 				string(bytes[1]),
 			}
 		case BINLOGCOMMAND_KDEL:
@@ -55,7 +55,7 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			}
 			binlog.cmd = []string{
 				"del",
-				string(key[offset]),
+				string(body[offset]),
 			}
 		case BINLOGCOMMAND_HSET:
 			if len(bytes) != 2 {
@@ -64,12 +64,12 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			if cmdtag != DATATYPE_HASH {
 				break
 			}
-			size := int(key[offset])
+			size := int(body[offset])
 			offset += 1
-			name := string(key[offset : offset+size])
+			name := string(body[offset : offset+size])
 			offset = offset + size
 			offset += 1
-			key := string(key[offset:])
+			key := string(body[offset:])
 			val := string(bytes[1])
 			binlog.cmd = []string{
 				"hset",
@@ -81,12 +81,12 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			if cmdtag != DATATYPE_HASH {
 				break
 			}
-			size := int(key[offset])
+			size := int(body[offset])
 			offset += 1
-			name := string(key[offset : offset+size])
+			name := string(body[offset : offset+size])
 			offset = offset + size
 			offset += 1
-			key := string(key[offset:])
+			key := string(body[offset:])
 			binlog.cmd = []string{
 				"hdel",
 				name,
@@ -99,16 +99,16 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			if cmdtag != DATATYPE_ZSET {
 				break
 			}
-			size := int(key[offset])
+			size := int(body[offset])
 			offset += 1
-			name := string(key[offset : offset+size])
+			name := string(body[offset : offset+size])
 			offset = offset + size
 			sign := ""
-			if key[offset] == '-' {
+			if body[offset] == '-' {
 				sign = "-"
 			}
 			offset += 1
-			key := string(key[offset:])
+			key := string(body[offset:])
 			val := sign + string(bytes[1]) //add number's sign
 			if name != SSDB_EXPIRATION_LIST_KEY {
 				binlog.cmd = []string{
@@ -129,18 +129,65 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			if cmdtag != DATATYPE_ZSET {
 				break
 			}
-			size := int(key[offset])
+			size := int(body[offset])
 			offset += 1
-			name := string(key[offset : offset+size])
+			name := string(body[offset : offset+size])
 			offset = offset + size
 			offset += 1
-			key := string(key[offset:])
+			key := string(body[offset:])
 			if name != SSDB_EXPIRATION_LIST_KEY {
 				binlog.cmd = []string{
 					"zrem",
 					name,
 					key,
 				}
+			}
+		case BINLOGCOMMAND_QSET, BINLOGCOMMAND_QPUSH_BACK, BINLOGCOMMAND_QPUSH_FRONT:
+			if len(bytes) != 2 {
+				break
+			}
+			size := int(body[offset])
+			offset += 1
+			name := string(body[offset : offset+size])
+			offset = offset + size
+			seq := binary.BigEndian.Uint64(body[offset:])
+			if seq < SSDB_QITEM_MIN_SEQ || seq > SSDB_QITEM_MAX_SEQ {
+				break
+			}
+			val := string(bytes[1]) //list val
+			switch binlog.cmdtype{
+			case BINLOGCOMMAND_QPUSH_BACK:
+				binlog.cmd = []string{
+					"rpush",
+					name,
+					val,
+				}
+			case BINLOGCOMMAND_QPUSH_FRONT:
+				binlog.cmd = []string{
+					"lpush",
+					name,
+					val,
+				}
+			case BINLOGCOMMAND_QSET:
+				fmt.Println("unsuported qset binlog:", name, seq, val)
+			default:
+				fmt.Println("unknown qet/push binlog:", binlog)
+			}
+		case BINLOGCOMMAND_QPOP_BACK,BINLOGCOMMAND_QPOP_FRONT:
+			name := string(body[:])
+			switch binlog.cmdtype{
+			case BINLOGCOMMAND_QPOP_BACK:
+				binlog.cmd = []string{
+					"rpop",
+					name,
+				}
+			case BINLOGCOMMAND_QPOP_FRONT:
+				binlog.cmd = []string{
+					"lpop",
+					name,
+				}
+			default:
+				fmt.Println("unknown pop binlog:", binlog)
 			}
 		default:
 			fmt.Println("unknown binlog:", binlog)
