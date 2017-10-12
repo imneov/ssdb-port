@@ -99,7 +99,7 @@ Options:
 	pprofAddr, _ := d["--pprof"].(string)
 	if pprofAddr != ""{
 		log.Infof("init pprof on  %s\n", pprofAddr)
-		perf.Init([]string{pprofAddr})
+		InitPerf([]string{pprofAddr})
 	}
 
 	switch {

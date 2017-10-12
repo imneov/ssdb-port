@@ -8,7 +8,7 @@ import (
 )
 
 // StartPprof start http pprof.
-func Init(pprofBind []string) {
+func InitPerf(pprofBind []string) {
 	pprofServeMux := http.NewServeMux()
 	pprofServeMux.HandleFunc("/debug/pprof/", pprof.Index)
 	pprofServeMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
