@@ -55,7 +55,7 @@ func LoadBinlog(bytes [][]byte) (binlog *Binlog, err error) {
 			}
 			binlog.cmd = []string{
 				"del",
-				string(body[offset]),
+				string(body[offset:]),
 			}
 		case BINLOGCOMMAND_HSET:
 			if len(bytes) != 2 {
